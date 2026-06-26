@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { config, saveConfig } from '../config';
+import { config, saveConfig, IS_ENV_LOCKED } from '../config';
 import { testWebhook } from '../lib/api';
 
 export default function ConnectionSettings({ open }) {
@@ -12,6 +12,31 @@ export default function ConnectionSettings({ open }) {
   const [useMock, setUseMock] = useState(config.useMockData);
   const [status, setStatus] = useState({ text: '', type: 'info' });
   const [testing, setTesting] = useState(false);
+
+  const [locked, setLocked] = useState(config.settingsLocked);
+  const [mode, setMode] = useState(null); // 'unlocking' | 'locking' | null
+  const [pinInput, setPinInput] = useState('');
+  const [newPin, setNewPin] = useState('');
+
+  function handleUnlock() {
+    if (!config.adminPin || pinInput === config.adminPin) {
+      saveConfig({ settingsLocked: false });
+      setLocked(false);
+      setMode(null);
+      setPinInput('');
+      setStatus({ text: '', type: 'info' });
+    } else {
+      setStatus({ text: 'Incorrect PIN.', type: 'err' });
+    }
+  }
+
+  function handleLock() {
+    saveConfig({ settingsLocked: true, adminPin: newPin.trim() });
+    setLocked(true);
+    setMode(null);
+    setNewPin('');
+    setStatus({ text: 'Settings locked.', type: 'ok' });
+  }
 
   async function handleSaveAndTest() {
     saveConfig({ useMockData: useMock });
@@ -65,12 +90,81 @@ export default function ConnectionSettings({ open }) {
   return (
     <div className={`connect-panel ${open ? 'open' : ''}`}>
       <div className="connect-inner">
+
+        {/* Env-var lock — production mode, no unlock possible */}
+        {IS_ENV_LOCKED && (
+          <div className="connect-status connect-status--info" style={{ marginBottom: 8 }}>
+            🔒 Settings are managed by the account owner via Vercel. Contact them to make changes.
+          </div>
+        )}
+
+        {/* PIN lock — local dev mode only */}
+        {!IS_ENV_LOCKED && (
+          <div className="connect-row connect-row--toggle" style={{ marginBottom: 4 }}>
+            <span className="field-label" style={{ fontWeight: 600 }}>
+              {locked ? '🔒 Locked — admin only' : '🔓 Unlocked'}
+            </span>
+            {locked && mode !== 'unlocking' && (
+              <button className="connect-save" onClick={() => { setMode('unlocking'); setStatus({ text: '', type: 'info' }); }}>
+                Unlock
+              </button>
+            )}
+            {!locked && mode !== 'locking' && (
+              <button className="connect-save" onClick={() => setMode('locking')}>
+                Lock Settings
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* PIN unlock prompt */}
+        {mode === 'unlocking' && (
+          <div className="connect-row">
+            <span className="field-label">Admin PIN</span>
+            <input
+              type="password"
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
+              placeholder={config.adminPin ? 'Enter PIN' : 'No PIN set — click Unlock'}
+              autoFocus
+            />
+            <button className="connect-save" onClick={handleUnlock} style={{ marginLeft: 8 }}>
+              Unlock
+            </button>
+            <button className="connect-save" onClick={() => { setMode(null); setPinInput(''); }} style={{ marginLeft: 4, opacity: 0.55 }}>
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {/* PIN lock prompt */}
+        {mode === 'locking' && (
+          <div className="connect-row">
+            <span className="field-label">Set admin PIN (leave blank for no PIN)</span>
+            <input
+              type="password"
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleLock()}
+              placeholder="New PIN or leave blank"
+              autoFocus
+            />
+            <button className="connect-save" onClick={handleLock} style={{ marginLeft: 8 }}>
+              Lock & Save
+            </button>
+            <button className="connect-save" onClick={() => { setMode(null); setNewPin(''); }} style={{ marginLeft: 4, opacity: 0.55 }}>
+              Cancel
+            </button>
+          </div>
+        )}
+
         <div className="connect-row">
           <span className="field-label">Courses Webhook URL</span>
           <input
             type="text"
             value={coursesUrl}
-            disabled={useMock}
+            disabled={IS_ENV_LOCKED || locked || useMock}
             onChange={(e) => setCoursesUrl(e.target.value)}
             placeholder="https://your-instance/webhook/golf-courses"
           />
@@ -80,7 +174,7 @@ export default function ConnectionSettings({ open }) {
           <input
             type="text"
             value={itineraryUrl}
-            disabled={useMock}
+            disabled={IS_ENV_LOCKED || locked || useMock}
             onChange={(e) => setItineraryUrl(e.target.value)}
             placeholder="https://your-instance/webhook/golf-trip-planner"
           />
@@ -90,8 +184,9 @@ export default function ConnectionSettings({ open }) {
           <input
             type="text"
             value={googleKey}
+            disabled={IS_ENV_LOCKED || locked}
             onChange={(e) => setGoogleKey(e.target.value)}
-            placeholder="Paste your Google Maps API Key here"
+            placeholder="Paste your Google Places API Key here"
           />
         </div>
         <div className="connect-row">
@@ -99,7 +194,7 @@ export default function ConnectionSettings({ open }) {
           <input
             type="text"
             value={photosUrl}
-            disabled={useMock}
+            disabled={IS_ENV_LOCKED || locked || useMock}
             onChange={(e) => setPhotosUrl(e.target.value)}
             placeholder="https://your-instance/webhook/course-photo"
           />
@@ -109,7 +204,7 @@ export default function ConnectionSettings({ open }) {
           <input
             type="text"
             value={sendEmailUrl}
-            disabled={useMock}
+            disabled={IS_ENV_LOCKED || locked || useMock}
             onChange={(e) => setSendEmailUrl(e.target.value)}
             placeholder="https://your-instance/webhook/send-itinerary-email"
           />
@@ -119,17 +214,17 @@ export default function ConnectionSettings({ open }) {
           <input
             type="text"
             value={airtableUrl}
-            disabled={useMock}
+            disabled={IS_ENV_LOCKED || locked || useMock}
             onChange={(e) => setAirtableUrl(e.target.value)}
             placeholder="https://your-instance/webhook/log-itinerary"
           />
         </div>
         <div className="connect-row connect-row--toggle">
           <label className="toggle-label">
-            <input type="checkbox" checked={useMock} onChange={(e) => setUseMock(e.target.checked)} />
+            <input type="checkbox" checked={useMock} disabled={IS_ENV_LOCKED || locked} onChange={(e) => setUseMock(e.target.checked)} />
             <span>Use sample data (no live workflow needed)</span>
           </label>
-          <button className="connect-save" onClick={handleSaveAndTest} disabled={testing}>
+          <button className="connect-save" onClick={handleSaveAndTest} disabled={IS_ENV_LOCKED || locked || testing}>
             {testing ? 'Testing…' : 'Save & Test'}
           </button>
         </div>
