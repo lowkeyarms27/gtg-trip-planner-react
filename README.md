@@ -1,77 +1,113 @@
-# GTG World Cup — React Rebuild
+# GTG World Cup 2026 — Trip Planner
 
-This is the React + Vite version of the World Cup trip planner, rebuilt from
-the original single-file HTML version with proper components, hooks, and a
-real data layer.
+A luxury golf trip planner built for Golf Travel Group, designed around the 2026 FIFA World Cup. Clients pick a host city, choose golf courses, and receive a fully AI-generated 3-day itinerary combining the match experience with bespoke golf travel.
 
-## Two files were provided
+**Live site:** [gtgplanner.vercel.app](https://gtgplanner.vercel.app)
 
-**`gtg-trip-planner-react-source.zip`** — the full editable source code.
-Use this if you want to keep developing it.
+---
+
+## What it does
+
+1. **Explore host cities** — an interactive map shows all 16 World Cup 2026 host cities across the USA, Canada, and Mexico
+2. **Pick a city & match** — select a fixture and see the stadium, estimated trip value, and flight cost from the UK
+3. **Choose golf courses** — real courses near each host city are fetched and displayed with photos from Google Places
+4. **Generate an itinerary** — an AI (Groq / LLaMA) writes a personalised 3-day luxury itinerary combining golf and the match
+5. **Email the itinerary** — send the full trip plan directly to a client's inbox via SendGrid
+6. **Compare & save** — compare multiple trip options side by side and review session history
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19 + Vite |
+| Map | D3.js + TopoJSON |
+| Automation | n8n (self-hosted via Docker) |
+| AI | Groq — LLaMA 3.3 70B |
+| Photos | Google Places API (New) |
+| Email | SendGrid |
+| Tunnel | ngrok (exposes local n8n publicly) |
+| Hosting | Vercel |
+| Source | GitHub — [lowkeyarms27/gtg-trip-planner-react](https://github.com/lowkeyarms27/gtg-trip-planner-react) |
+
+---
+
+## How it's connected
 
 ```
-unzip gtg-trip-planner-react-source.zip
+Browser (Vercel)
+    │
+    ├── Courses webhook  ──────────────────┐
+    ├── Itinerary webhook ─────────────────┤
+    ├── Email webhook ─────────────────────┤──► ngrok tunnel ──► n8n (local Docker)
+    ├── Log webhook ───────────────────────┤         │
+    └── Photos webhook ─────────────────────┘         ├── Calls Google Places API
+                                                      ├── Calls Groq AI
+                                                      └── Calls SendGrid
+```
+
+All API keys and credentials live inside n8n — nothing sensitive is exposed to the browser.
+
+---
+
+## Running locally
+
+**Requirements:** Node 18+, Docker Desktop
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/lowkeyarms27/gtg-trip-planner-react.git
 cd gtg-trip-planner-react
+
+# 2. Install dependencies
 npm install
-npm run dev        # starts a local dev server, usually http://localhost:5173
+
+# 3. Start the dev server
+npm run dev
+# Opens at http://localhost:5173
 ```
 
-To build it for hosting/sharing:
+The app works without any webhooks — just tick **"Use sample data"** in Connection Settings to see the full flow with mock data.
+
+---
+
+## n8n workflows
+
+All automation workflows are in the `n8n-workflows/` folder. Import them directly into your n8n instance:
+
+| File | What it does |
+|---|---|
+| `gtg-enhanced-itinerary-groq.json` | Generates the 3-day itinerary using Groq AI |
+| `gtg-airtable-lead-logger.json` | Logs each itinerary to Airtable / Sheets / Discord |
+| `gtg-send-email-sendgrid.json` | Sends the itinerary to a client via SendGrid |
+| `gtg-course-photo-proxy.json` | Proxies Google Places photo requests (keeps API key server-side) |
+
+---
+
+## Connection Settings
+
+The settings panel in the app nav shows all configured webhook URLs. On the live site these are locked — only the account owner can change them via the Vercel dashboard environment variables.
+
+| Vercel env var | Purpose |
+|---|---|
+| `VITE_COURSES_WEBHOOK_URL` | n8n endpoint that returns golf courses near a city |
+| `VITE_ITINERARY_WEBHOOK_URL` | n8n endpoint that generates the AI itinerary |
+| `VITE_SEND_EMAIL_WEBHOOK_URL` | n8n endpoint that sends the itinerary email |
+| `VITE_AIRTABLE_WEBHOOK_URL` | n8n endpoint that logs the lead |
+| `VITE_PHOTOS_WEBHOOK_URL` | n8n endpoint that proxies Google Places photos |
+| `VITE_GOOGLE_MAPS_API_KEY` | Google Places API (New) key for course photos |
+
+---
+
+## Deploying changes
+
+```bash
+# Build
+npm run build
+
+# Deploy to Vercel
+vercel --prod
 ```
-npm run build       # outputs to dist/
-```
 
-**`gtg-world-cup-react-build.zip`** — the already-built, ready-to-host
-version. No Node/npm needed. Unzip it and either:
-- Open `dist/index.html` directly in a browser, or
-- Upload the whole `dist/` folder to any static host (Netlify, Vercel,
-  GitHub Pages, or your own server)
-
-## What changed from the original HTML version
-
-Same design, same features (map, planner wizard, compare, history,
-skeleton loading, course photos) — now built as proper React components
-instead of one large script:
-
-```
-src/
-  App.jsx                     — top-level view switching (landing/planner)
-  config.js                   — webhook URLs, persisted per session
-  data/cityData.js            — all 16 real host cities, verified coordinates
-  lib/
-    api.js                    — webhook calls + mock fallback
-    format.js                 — itinerary text formatters (copy/email)
-    wikipedia.js               — course photo lookups
-  hooks/
-    useReveal.js               — scroll-reveal animation
-    useSessionHistory.js
-    useCompareTrips.js
-  components/
-    Nav.jsx, ConnectionSettings.jsx
-    LandingPage.jsx, PlannerPage.jsx
-    landing/                  — Hero, StatsBar, FeatureGrid, HostMap, etc.
-    planner/                  — WizardSteps, CourseSelector, ActivationResult, etc.
-  styles/
-    tokens.css                 — design tokens (colours, buttons, base styles)
-    app.css                    — full component styling
-```
-
-## Connecting to n8n
-
-Same as before — click **⚙ Connection settings** in the nav, paste your two
-webhook URLs (courses + itinerary), untick "Use sample data," and click
-**Save & Test**.
-
-If you still get "Failed to fetch" after this rebuild, that confirms it
-was never the frontend's fault — it's almost always a CORS configuration
-issue on the n8n webhook nodes themselves (see the n8n setup guide's
-troubleshooting section).
-
-## Known limitation
-
-The dev server in this sandboxed environment couldn't be kept running long
-enough for a live click-through test — the build compiles cleanly and the
-code has been carefully audited for React-specific bugs (effect cleanup,
-stale closures, etc.), but you should still click through the full flow
-once yourself after running `npm run dev` to confirm everything behaves as
-expected in a real browser.
+Changes pushed to the `master` branch on GitHub trigger an automatic Vercel deployment.
