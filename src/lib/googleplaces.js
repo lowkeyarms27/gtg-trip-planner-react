@@ -20,11 +20,13 @@ export async function fetchCoursePhotoGoogle(courseName, cityName) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseName, cityName }),
       });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.photoUrl || null;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.photoUrl) return data.photoUrl;
+        // webhook returned null — fall through to direct API key
+      }
     } catch {
-      return null;
+      // fall through to direct API key
     }
   }
 
