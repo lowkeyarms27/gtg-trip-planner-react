@@ -1,0 +1,132 @@
+:root {
+  --forest: #0B1F16;
+  --forest-deep: #081712;
+  --cream: #EFEAE0;
+  --cream-warm: #E8E3D8;
+  --amber: #C9954B;
+  --amber-bright: #DDAE6B;
+  --mint: #8FBFA3;
+  --coral: #D85A30;
+  --charcoal: #1A1A1A;
+  --ink-soft: #5A5246;
+  --line: rgba(255, 255, 255, 0.16);
+  --line-dark: rgba(11, 31, 22, 0.12);
+
+  --font-display: 'Source Serif 4', Georgia, serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+
+  --radius: 3px;
+  --max-width: 1180px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  background: var(--cream);
+  color: var(--charcoal);
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+
+button, input, select {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.serif {
+  font-family: var(--font-display);
+}
+
+.section-label {
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+
+.btn-filled {
+  background: var(--amber);
+  color: var(--forest-deep);
+  border: none;
+  padding: 14px 24px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease;
+}
+
+.btn-filled:hover { background: var(--amber-bright); }
+.btn-filled:active { transform: scale(0.98); }
+.btn-filled:disabled { opacity: 0.5; cursor: wait; }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--line-dark);
+  color: var(--charcoal);
+  padding: 13px 22px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.btn-outline:hover { background: rgba(11, 31, 22, 0.04); }
+
+.btn-small {
+  border: 1px solid var(--line-dark);
+  background: white;
+  padding: 9px 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius);
+  cursor: pointer;
+  min-width: 140px;
+  text-align: center;
+  transition: background 0.15s ease;
+}
+
+.btn-small:hover { background: var(--cream-warm); }
+
+.btn-small.filled {
+  background: var(--forest);
+  color: var(--cream);
+  border: none;
+}
+
+.btn-small.filled:hover { background: var(--forest-deep); }
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #ECE6D8 0px, #F6F2E9 80px, #ECE6D8 160px);
+  background-size: 200px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; background: #ECE6D8; }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}

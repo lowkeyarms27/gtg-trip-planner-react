@@ -1,0 +1,76 @@
+{
+  "name": "GTG — Send Itinerary Email via SendGrid",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-itinerary-email",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "gtg-send-itinerary-email"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nconst to = body.to;\nconst subject = body.subject || `Your bespoke golf itinerary — GTG World Cup 2026`;\nconst itinerary = body.itinerary || {};\n\nconst courses = (itinerary.courses || []).join(', ');\nconst days = (itinerary.days || []).map((d, i) => `\n  <tr>\n    <td style=\"padding:18px 24px; border-top:1px solid #e8e3d8; vertical-align:top; width:80px;\">\n      <div style=\"font-family:'Georgia',serif; font-size:1.5rem; color:#C9954B; font-style:italic;\">${['I','II','III','IV','V'][i] || i+1}</div>\n      <div style=\"font-size:0.65rem; letter-spacing:1.5px; text-transform:uppercase; color:#8a8278; margin-top:2px;\">Day ${i+1}</div>\n    </td>\n    <td style=\"padding:18px 24px; border-top:1px solid #e8e3d8;\">\n      <div style=\"font-family:'Georgia',serif; font-size:1.05rem; color:#0B1F16; margin-bottom:8px;\">${d.title}</div>\n      <div style=\"font-size:0.9rem; color:#3a3a3a; line-height:1.6;\">${d.text}</div>\n    </td>\n  </tr>\n`).join('');\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0; padding:0; background:#efeae0; font-family:'Inter',-apple-system,sans-serif;\">\n\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#efeae0; padding:40px 20px;\">\n  <tr><td align=\"center\">\n  <table width=\"620\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff; border:1px solid #d8d3c8;\">\n\n    <!-- Header -->\n    <tr>\n      <td style=\"background:#0B1F16; padding:32px 40px;\">\n        <div style=\"font-size:0.65rem; letter-spacing:3px; text-transform:uppercase; color:#C9954B; margin-bottom:10px;\">GTG WORLD CUP · BY GOLF TRAVEL GROUP</div>\n        <div style=\"font-family:'Georgia',serif; font-size:1.6rem; color:#EFEAE0; line-height:1.3;\">Your bespoke golf itinerary</div>\n        <div style=\"font-family:'Georgia',serif; font-size:2rem; color:#DDAE6B; line-height:1.2; margin-top:6px; font-style:italic;\">${itinerary.city || ''}<span style=\"color:rgba(255,255,255,0.4); font-size:1.3rem;\">, ${itinerary.country || ''}</span></div>\n      </td>\n    </tr>\n\n    <!-- Trip summary -->\n    <tr>\n      <td style=\"padding:28px 40px; border-bottom:1px solid #e8e3d8; background:#f8f5ef;\">\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n          <tr>\n            <td style=\"padding-right:20px;\">\n              <div style=\"font-size:0.62rem; letter-spacing:1.5px; text-transform:uppercase; color:#8a8278; margin-bottom:4px;\">Fixture</div>\n              <div style=\"font-size:0.88rem; color:#1a1a1a; font-weight:600;\">${itinerary.match || '—'}</div>\n            </td>\n            <td style=\"padding-right:20px;\">\n              <div style=\"font-size:0.62rem; letter-spacing:1.5px; text-transform:uppercase; color:#8a8278; margin-bottom:4px;\">Venue</div>\n              <div style=\"font-size:0.88rem; color:#1a1a1a; font-weight:600;\">${itinerary.venue || '—'}</div>\n            </td>\n            <td>\n              <div style=\"font-size:0.62rem; letter-spacing:1.5px; text-transform:uppercase; color:#8a8278; margin-bottom:4px;\">Est. Value</div>\n              <div style=\"font-size:0.88rem; color:#0B1F16; font-weight:600;\">${itinerary.estValue || '—'} pp</div>\n            </td>\n          </tr>\n          <tr>\n            <td colspan=\"3\" style=\"padding-top:16px;\">\n              <div style=\"font-size:0.62rem; letter-spacing:1.5px; text-transform:uppercase; color:#8a8278; margin-bottom:4px;\">Golf Courses</div>\n              <div style=\"font-size:0.88rem; color:#1a1a1a;\">${courses}</div>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n\n    <!-- Days -->\n    <tr>\n      <td>\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">${days}</table>\n      </td>\n    </tr>\n\n    <!-- Footer -->\n    <tr>\n      <td style=\"background:#0B1F16; padding:28px 40px;\">\n        <div style=\"font-size:0.82rem; color:rgba(239,234,224,0.7); line-height:1.6; margin-bottom:16px;\">\n          This itinerary is a starting point — we're happy to adjust courses, pacing, or accommodation to suit you.\n          Just reply to this email and we'll take care of the rest.\n        </div>\n        <div style=\"font-size:0.68rem; letter-spacing:1px; text-transform:uppercase; color:#C9954B;\">Golf Travel Group · golftravel.group</div>\n      </td>\n    </tr>\n\n  </table>\n  </td></tr>\n</table>\n\n</body>\n</html>\n`;\n\nreturn [{ json: { to, subject, html } }];"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Build HTML Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "apiKey",
+        "toEmail": "={{ $json.to }}",
+        "fromEmail": "itineraries@golftravel.group",
+        "fromName": "Golf Travel Group",
+        "subject": "={{ $json.subject }}",
+        "contentType": "html",
+        "htmlBody": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "SendGrid",
+      "type": "n8n-nodes-base.sendGrid",
+      "typeVersion": 1,
+      "position": [720, 300],
+      "credentials": {
+        "sendGridApi": {
+          "id": "REPLACE_WITH_YOUR_SENDGRID_CREDENTIAL_ID",
+          "name": "SendGrid API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true, \"message\": \"Email sent\" }"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Build HTML Email", "type": "main", "index": 0 }]]
+    },
+    "Build HTML Email": {
+      "main": [[{ "node": "SendGrid", "type": "main", "index": 0 }]]
+    },
+    "SendGrid": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

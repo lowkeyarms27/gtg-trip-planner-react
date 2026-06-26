@@ -1,0 +1,197 @@
+{
+  "name": "GTG — Course Photo Proxy (Google Places)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "course-photo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "gtg-course-photo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst courseName = (body.courseName || '').trim();\nconst cityName = (body.cityName || '').trim();\nif (!courseName) throw new Error('courseName is required');\nreturn [{ json: { textQuery: [courseName, cityName, 'golf course'].filter(Boolean).join(' ') } }];"
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000002",
+      "name": "Extract Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://places.googleapis.com/v1/places:searchText",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-FieldMask",
+              "value": "places.photos"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "textQuery", "value": "={{ $json.textQuery }}" },
+            { "name": "maxResultCount", "value": 1 }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000003",
+      "name": "Google Places Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_GOOGLE_CREDENTIAL_ID",
+          "name": "Google Places API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst photoName = data.places?.[0]?.photos?.[0]?.name || null;\nreturn [{ json: { photoName } }];"
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000004",
+      "name": "Extract Photo Reference",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-photo",
+              "leftValue": "={{ $json.photoName }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000005",
+      "name": "Has Photo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://places.googleapis.com/v1/{{ $json.photoName }}/media?maxWidthPx=1200",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000006",
+      "name": "Fetch Photo Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1440, 180],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_GOOGLE_CREDENTIAL_ID",
+          "name": "Google Places API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n// Google 302-redirects to a CDN URL that contains no API key\nconst photoUrl = response.headers?.location || response.headers?.Location || null;\nreturn [{ json: { photoUrl } }];"
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000007",
+      "name": "Extract CDN URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ photoUrl: $json.photoUrl }) }}"
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000008",
+      "name": "Respond with Photo",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1920, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"photoUrl\": null }"
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000009",
+      "name": "Respond No Photo",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1440, 420]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Extract Input", "type": "main", "index": 0 }]]
+    },
+    "Extract Input": {
+      "main": [[{ "node": "Google Places Search", "type": "main", "index": 0 }]]
+    },
+    "Google Places Search": {
+      "main": [[{ "node": "Extract Photo Reference", "type": "main", "index": 0 }]]
+    },
+    "Extract Photo Reference": {
+      "main": [[{ "node": "Has Photo?", "type": "main", "index": 0 }]]
+    },
+    "Has Photo?": {
+      "main": [
+        [{ "node": "Fetch Photo Media", "type": "main", "index": 0 }],
+        [{ "node": "Respond No Photo", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Photo Media": {
+      "main": [[{ "node": "Extract CDN URL", "type": "main", "index": 0 }]]
+    },
+    "Extract CDN URL": {
+      "main": [[{ "node": "Respond with Photo", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}
